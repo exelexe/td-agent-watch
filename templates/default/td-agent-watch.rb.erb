@@ -1,0 +1,55 @@
+#!/usr/bin/env ruby
+require 'net/http'
+require 'net/smtp'
+require 'uri'
+require 'json'
+require 'socket'
+
+def notify_mail (body)
+  notify = <%= node['td-agent-watch']['mail_notify'] %>
+  mail_from = "<%= node['td-agent-watch']['mail_from'] %>"
+  mail_to = "<%= node['td-agent-watch']['mail_to'] %>"
+
+  message = <<-MESSAGE_END
+From: #{mail_from}
+To: #{mail_to}
+Subject: [WARN] #{Socket.gethostname}/td-agent
+
+#{body}
+  MESSAGE_END
+
+  if notify then
+    Net::SMTP.start('localhost') do |smtp|
+      smtp.send_message message, mail_from, mail_to
+    end
+  end
+end
+
+plugins = nil
+begin
+  uri = URI.parse("http://localhost:24220/api/plugins.json")
+  req = Net::HTTP::Get.new(uri)
+  res = Net::HTTP.start(uri.host, uri.port){ |http|
+    http.request(req)
+  }
+  plugins = JSON(res.body)["plugins"]
+rescue Exception => e
+  notify_mail("request error\n#{e.message}")
+  exit 1
+end
+
+body = ''
+threshold = <%= node['td-agent-watch']['threshold'] %>
+plugins.each do |p|
+  len = p["buffer_queue_length"].to_i
+  if len >= threshold then
+    body << "buffer_queue_length #{threshold} over.\n"
+    body << "  - buffer_path: #{p["config"]["buffer_path"]}\n"
+  end
+end
+
+if body != '' then
+  notify_mail (body)
+end
+
+exit 1
