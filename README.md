@@ -1,12 +1,12 @@
 td-agent-watch Cookbook
 =======================
-- Watch buffer_queue_length for td-agent: 
-  if td-agent's buffer_queue_length is greater than threshold then an alert mail will be sent
-- Execution every five minute by cron.
+Watch `buffer_queue_length` of td-agent. Notify to mail if greater than a threshold.
+The script is exec the Cron once five minutes.
 
 Requirements
 ---------------
-Add following settings to td-agent's config.
+You need to allow the monitor config.
+
 ```
 <source>
   type monitor_agent
@@ -32,7 +32,7 @@ Custom JSON example
 }
 ```
 
-Mail detail example
+Mail body example
 ---------------
 ```
 subject: [WARN] {hostname}/td-agent
